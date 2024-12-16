@@ -42,6 +42,11 @@ public final class Workarounds {
             Field sCurrentActivityThreadField = ACTIVITY_THREAD_CLASS.getDeclaredField("sCurrentActivityThread");
             sCurrentActivityThreadField.setAccessible(true);
             sCurrentActivityThreadField.set(null, ACTIVITY_THREAD);
+
+            // activityThread.mSystemThread = true;
+            Field mSystemThreadField = ACTIVITY_THREAD_CLASS.getDeclaredField("mSystemThread");
+            mSystemThreadField.setAccessible(true);
+            mSystemThreadField.setBoolean(ACTIVITY_THREAD, true);
         } catch (Exception e) {
             throw new AssertionError(e);
         }
@@ -52,7 +57,7 @@ public final class Workarounds {
     }
 
     public static void apply() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (Build.VERSION.SDK_INT >= AndroidVersions.API_31_ANDROID_12) {
             // On some Samsung devices, DisplayManagerGlobal.getDisplayInfoLocked() calls ActivityThread.currentActivityThread().getConfiguration(),
             // which requires a non-null ConfigurationController.
             // ConfigurationController was introduced in Android 12, so do not attempt to set it on lower versions.
@@ -132,10 +137,13 @@ public final class Workarounds {
         try {
             Class<?> configurationControllerClass = Class.forName("android.app.ConfigurationController");
             Class<?> activityThreadInternalClass = Class.forName("android.app.ActivityThreadInternal");
+
+            // configurationController = new ConfigurationController(ACTIVITY_THREAD);
             Constructor<?> configurationControllerConstructor = configurationControllerClass.getDeclaredConstructor(activityThreadInternalClass);
             configurationControllerConstructor.setAccessible(true);
             Object configurationController = configurationControllerConstructor.newInstance(ACTIVITY_THREAD);
 
+            // ACTIVITY_THREAD.mConfigurationController = configurationController;
             Field configurationControllerField = ACTIVITY_THREAD_CLASS.getDeclaredField("mConfigurationController");
             configurationControllerField.setAccessible(true);
             configurationControllerField.set(ACTIVITY_THREAD, configurationController);
@@ -155,7 +163,7 @@ public final class Workarounds {
         }
     }
 
-    @TargetApi(Build.VERSION_CODES.R)
+    @TargetApi(AndroidVersions.API_30_ANDROID_11)
     @SuppressLint("WrongConstant,MissingPermission")
     public static AudioRecord createAudioRecord(int source, int sampleRate, int channelConfig, int channels, int channelMask, int encoding) throws
             AudioCaptureException {
@@ -226,7 +234,7 @@ public final class Workarounds {
             int[] session = new int[]{AudioManager.AUDIO_SESSION_ID_GENERATE};
 
             int initResult;
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            if (Build.VERSION.SDK_INT < AndroidVersions.API_31_ANDROID_12) {
                 // private native final int native_setup(Object audiorecord_this,
                 // Object /*AudioAttributes*/ attributes,
                 // int[] sampleRate, int channelMask, int channelIndexMask, int audioFormat,
@@ -252,7 +260,7 @@ public final class Workarounds {
                     Method getParcelMethod = attributionSourceState.getClass().getDeclaredMethod("getParcel");
                     Parcel attributionSourceParcel = (Parcel) getParcelMethod.invoke(attributionSourceState);
 
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    if (Build.VERSION.SDK_INT < AndroidVersions.API_34_ANDROID_14) {
                         // private native int native_setup(Object audiorecordThis,
                         // Object /*AudioAttributes*/ attributes,
                         // int[] sampleRate, int channelMask, int channelIndexMask, int audioFormat,
